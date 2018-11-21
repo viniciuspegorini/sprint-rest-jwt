@@ -301,7 +301,7 @@ public class TokenUtils {
 O processo de autenticação de um usuário ocorre na seguinte ordem:
 
 ```mermaid
-graph LR
+graph LR;
 A[Cliente] -- json com usuário e senha --> B[AuthController]
 B -- realiza a autenticação --> C[SpringSecurity]
 C -- gera o token --> D[TokenUtil]
