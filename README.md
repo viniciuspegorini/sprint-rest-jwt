@@ -63,46 +63,48 @@ Classe responsável pelas configurações do Spring Security. O principal métod
 		@Autowired private TokenUtils tokenUtils;
 		@Autowired private UsuarioService usuarioService;
 		
-		@PostMapping() // /auth com POST, espera um objeto AuthenticationRequest no formato JSON ou seja {"username":"admin@admin.com", "password": "123"}
+		@PostMapping() // a URL '/auth' com o método POST, espera um objeto AuthenticationRequest no formato JSON ou seja {"username":"admin@admin.com", "password": "123"}
 		public ResponseEntity<?> authenticationRequest(@RequestBody AuthenticationRequest a) throws AuthenticationException{
 			
-			Authentication authentication = this.authenticationManager
-					.authenticate(new UsernamePasswordAuthenticationToken(a.getUsername(), a.getPassword()));
+			//Realiza a autenticação por meio do Spring Security
+			Authentication authentication = this.authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(a.getUsername(), a.getPassword()));
 			SecurityContextHolder.getContext().setAuthentication(authentication);
 			UserDetails userDetails = this.usuarioService.loadUserByUsername(a.getUsername());
+			
+			//Gera o token de acordo com o usuário logado
 			String token = this.tokenUtils.generateToken(userDetails);
+			
+			//Retorna um objeto do tipo AuthenticationResponse, que contém o **token**
 			return ResponseEntity.ok(new AuthenticationResponse(token));
 		}
 		
-		@GetMapping(value = "refresh")
-		public ResponseEntity<?> authenticationRequest(
-				HttpServletRequest request){
-			
+		@GetMapping(value = "refresh") // O refresh retorna um novo token atualizado
+		public ResponseEntity<?> authenticationRequest(HttpServletRequest request){
+			//Recupera-se o token do cabeçalho da requisição		
 			String token = request.getHeader(AppConstant.TOKEN_HEADER);
+			//Recupera o username do token
 			String username = this.tokenUtils.getUsernameFromToken(token);
-			Usuario u = (Usuario) this.usuarioService
-					.loadUserByUsername(username);
-			
-			if (this.tokenUtils.canTokenBeRefreshed(token, 
-					u.getLastPasswordReset())) {
-				String refreshedToken = 
-						this.tokenUtils.refreshToken(token);
-				return ResponseEntity.ok(
-						new AuthenticationResponse(refreshedToken));
+			//Carrega o usuário do banco
+			Usuario u = (Usuario) this.usuarioService.loadUserByUsername(username);
+			//Verifica se o token ainda é válido e poderá ser atualizado gera o token e retorna, senão retorna um badrequest
+			if (this.tokenUtils.canTokenBeRefreshed(token, u.getLastPasswordReset())) {
+				String refreshedToken = this.tokenUtils.refreshToken(token);
+				return ResponseEntity.ok(new AuthenticationResponse(refreshedToken));
 			}else {
 				return ResponseEntity.badRequest().body(null);
 			}
 		}
-		
 	}
-
-
+	
 ### AuthenticationTokenFilter
 
 ### AuthenticationRequest
-
+Objeto que vai conter o json enviado na requisição com o usuário e senha.
+>{"username":"admin@admin.com", "password": "123"}
 ### AuthenticationResponse
-
+Objeto que vai conter o token enviado na resposta para o cliente.
+>{"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMCIsIm5hbWUiOiJQYWxtZWlyYXMiLCJpYXQiOjE1MTYyMzkwMjJ9.gtqLloY91FM97vUBl8nk4Ga6PyNP_x2LuAAHS1kt1MA"
 ### EntryPointUnauthorizedHandler
-
+Classe criada para tratar as exceções de acesso negado. O método **commence()** presente na classe, no caso de acesso negado, retorna a mensagem traduzida (pt-BR) para o cliente, sobrescrevendo a mensagem padrão em inglês.
 ### TokenUtils
+Classe com os métodos necessários para gerar o JWT.
